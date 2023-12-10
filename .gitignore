@@ -1,7 +1,4 @@
-**/node_modules/
-git rm -r --cached <**/node_modules/>
-
-.env
+*.env
 *.com
 *.class
 *.dll
@@ -26,3 +23,4 @@ git rm -r --cached <**/node_modules/>
 .Trashes
 ehthumbs.db
 Thumbs.db
+node_modules/
