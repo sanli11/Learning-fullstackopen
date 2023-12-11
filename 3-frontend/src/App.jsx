@@ -7,7 +7,7 @@ import Footer from "./components/Footer";
 
 const App = () => {
   const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState("a new note...");
+  const [newNote, setNewNote] = useState("");
   const [showAll, setShowAll] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -26,11 +26,10 @@ const App = () => {
     const noteObject = {
       content: newNote,
       important: Math.random() < 0.5,
-      id: notes.length + 1,
     };
 
     noteService.createNote(noteObject).then((returnedNote) => {
-      setNotes(returnedNote);
+      setNotes(notes.concat(returnedNote));
       setNewNote("");
     });
   };
@@ -42,9 +41,9 @@ const App = () => {
 
     noteService
       .update(id, changedNote)
-      .then((returnedNote) => {
-        setNotes(notes.map((note) => (note.id !== id ? note : returnedNote)));
-      })
+      .then((returnedNote) =>
+        setNotes(notes.map((note) => (note.id !== id ? note : returnedNote)))
+      )
       .catch((error) => {
         setErrorMessage(
           `Note "${note.content}" was already removed from the server`
@@ -53,8 +52,6 @@ const App = () => {
         setTimeout(() => {
           setErrorMessage(null);
         }, 5000);
-
-        setNotes(notes.filter((note) => note.id !== id));
       });
   };
 

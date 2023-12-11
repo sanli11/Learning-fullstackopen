@@ -2,6 +2,6 @@ POST http://localhost:3002/api/notes
 Content-Type: application/json
 
 {
-  "content": "Express JS is easy",
+  "content": "Ensure that everything still works",
   "important": true
 }

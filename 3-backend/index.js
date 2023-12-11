@@ -135,11 +135,11 @@
 // app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // using express with note.js schema
-require('dotenv').config();
+require("dotenv").config();
 
 const express = require("express");
-// const mongoose = require("mongoose");
-const Note = require('./models/note')
+const cors = require("cors");
+const Note = require("./models/note");
 const app = express();
 
 const requestLogger = (req, res, next) => {
@@ -150,93 +150,82 @@ const requestLogger = (req, res, next) => {
 
   next();
 };
-const unknownEndpoint = (req, res) => {
-  res.status(404).send({ error: "unknown endpoint" });
-};
 
-// const password = process.argv[2];
-// const url = `mongodb+srv://fatesinz1:${password}@cluster0.gieyyrz.mongodb.net/noteApp?retryWrites=true&w=majority`;
-
-app.use(express.static("dist"));
 app.use(express.json());
+app.use(cors());
 app.use(requestLogger);
+app.use(express.static("dist"));
 
-// mongoose.set("strictQuery", false);
-// mongoose.connect(url);
-
-// const noteSchema = new mongoose.Schema({
-//   content: String,
-//   important: Boolean,
-// });
-
-// noteSchema.set("toJSON", {
-//   transform: (document, returnedObject) => {
-//     returnedObject.id = returnedObject._id.toString();
-//     delete returnedObject._id;
-//     delete returnedObject.__v;
-//   },
-// });
-
-// const Note = mongoose.model("Note", noteSchema);
-
-const generateId = () => {
-  const maxId = notes.length > 0 ? Math.max(...notes.map((n) => n.id)) : 0;
-  return maxId + 1;
-};
+let notes = [];
 
 app.get("/api/notes/", (req, res) => {
-  Note.find({}).then((notes) => {
-    res.json(notes);
-  });
+  Note.find({}).then((notes) => res.json(notes));
 });
 
-app.get("/api/notes/:id", (req, res) => {
-  const id = Number(req.params.id);
-  console.log("Getting note with ID: ", id);
-
-  const note = notes.find((note) => note.id === id);
-
-  // note ? res.json(note) : res.status(404).end();
-  if (note) {
-    console.log("Found note: ", note);
-    res.json(note);
-  } else {
-    console.log("No note with the ID: ", note);
-    res.status(404).send("Note with requested ID doesn't exist");
-  }
+app.get("/api/notes/:id", (req, res, next) => {
+  Note.findById(req.params.id)
+    .then((note) => (note ? res.json(note) : res.status(404).end()))
+    // .catch((error) => {
+    // console.log(error.message);
+    // res.status(400).send({ error: "Malformed ID" });
+    // });
+    .catch((error) => next(error));
 });
 
-app.post("/api/notes/", (req, res) => {
+app.post("/api/notes", (req, res, next) => {
   const noteBody = req.body;
 
   if (!noteBody.content) {
     return res.status(400).json({ error: "Content is required" });
   }
 
-  const newNote = {
-    id: generateId(),
+  const note = new Note({
     content: noteBody.content,
     important: noteBody.important || false,
+  });
+
+  note
+    .save()
+    .then((savedNote) => res.json(savedNote))
+    .catch((error) => next(error));
+});
+
+app.delete("/api/notes/:id", (req, res, next) => {
+  Note.findByIdAndDelete(req.params.id)
+    .then((result) => res.status(204).end())
+    .catch((error) => next(error));
+});
+
+app.put("/api/notes/:id", (req, res, next) => {
+  const noteBody = req.body;
+
+  const note = {
+    content: noteBody.content,
+    important: noteBody.important,
   };
-  console.log("Adding new note: ", newNote);
 
-  notes = notes.concat(newNote);
-  console.log("New note added at ID: ", newNote.id);
-
-  res.json(newNote);
+  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+    .then((updatedNote) => res.json(updatedNote))
+    .catch((error) => next(error));
 });
 
-app.delete("/api/notes/:id", (req, res) => {
-  const id = Number(req.params.id);
-  console.log("Deleting note with ID: ", id);
-
-  notes = notes.filter((note) => note.id !== id);
-  console.log("Note deleted with ID: ", id);
-
-  res.status(204).end();
-});
+const unknownEndpoint = (req, res) => {
+  res.status(404).send({ error: "unknown endpoint" });
+};
 
 app.use(unknownEndpoint);
+
+const errorHandler = (err, req, res, next) => {
+  console.log(err.message);
+
+  if (err.name === "CastError") {
+    return res.status(400).send({ error: "malformed ID" });
+  }
+
+  next(err);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
